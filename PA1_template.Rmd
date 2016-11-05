@@ -1,0 +1,97 @@
+---
+title: "Peer-graded Assignment: Course Project 1"  
+output: html_document
+---
+```{r global_options, include=FALSE}
+knitr::opts_chunk$set(fig.width=12, fig.height=8, fig.path='Figs/',
+                      echo=TRUE, warning=FALSE, message=FALSE)
+#prevent output in scientific notation
+options(scipen=999)
+```
+Code for reading in the dataset and/or processing the data  
+```{r, echo=TRUE}
+library(lattice)
+
+
+setwd('C://MOOC//ReproducibleResearch//')
+a <- read.csv('activity.csv')
+#calculate number of steps per day
+r <-aggregate(a$steps, by=list(a$date), FUN=sum, na.rm=TRUE)
+colnames(r) <- c("date", "StepsPerDay")
+#calculate mean value for each interval
+i <-aggregate(a$steps, by=list(a$interval), FUN=mean, na.rm=TRUE)
+colnames(i) <- c("interval", "meansteps")
+```
+
+Histogram of the total number of steps taken each day 
+```{r, echo=TRUE}
+hist(r$StepsPerDay,
+     main="Total number of steps taken each day",
+     xlab="steps",
+     breaks=nrow(r))
+```
+
+
+```{r, echo=TRUE}
+me <- mean(r$StepsPerDay[r$StepsPerDay!=0])
+med <- median(r$StepsPerDay[r$StepsPerDay!=0])
+```
+Mean `r me` and median number `r med` of steps taken each day  
+
+Time series plot of the average number of steps taken 
+```{r, echo=TRUE}
+plot(i$interval, i$meansteps, main='Average number of steps taken in an interval', xlab='interval', ylab='Average number of steps', type='l')
+
+```
+ 
+```{r, echo=TRUE}
+IntAvgMax <- subset(i, i$meansteps==max(i$meansteps))
+```
+The 5-minute interval that, on average, contains the maximum number of steps is `r IntAvgMax$interval`
+
+```{r, echo=TRUE}
+#missing values
+nmv <- length(a$steps[a$steps=='NA'])
+#impute mean value for interval if NA
+imp <- a
+imp <- merge(a, i, by="interval")
+imp$steps <- ifelse(is.na(imp$steps), imp$meansteps, imp$steps)
+#calculate steps per day
+imp.r <-aggregate(imp$steps, by=list(imp$date), FUN=sum, na.rm=TRUE)
+colnames(imp.r) <- c("date", "StepsPerDay")
+imp.me <- mean(imp.r$StepsPerDay[imp.r$StepsPerDay!=0])
+imp.med <- median(imp.r$StepsPerDay[imp.r$StepsPerDay!=0])
+```
+The total number of missing steps, steps=NA, in the dataset is `r nmv` 
+Missing step values have been replaced by the average number of steps for that interval.  
+After imputation, Mean `r imp.me` and median number `r imp.med` of steps taken each day  
+Histogram of the total number of steps taken each day after missing values are imputed  
+```{r, echo=TRUE}
+hist(imp.r$StepsPerDay,
+     main="Total number of steps taken each day (after imputation)",
+     xlab="steps",
+     breaks=nrow(imp.r))
+```
+
+Panel plot comparing the average number of steps taken per 5-minute interval across weekdays and weekends 
+```{r, echo=TRUE}
+a$dayname <- weekdays(as.Date(a$date))
+a$weekend <- "FALSE"
+a$weekend <- ifelse(a$dayname %in% c("Saturday", "Sunday"), "weekend", "weekday")
+wk <- subset(a, a$weekend=="weekday")
+i.wk <-aggregate(wk$steps, by=list(wk$interval, wk$weekend), FUN=mean, na.rm=TRUE)
+colnames(i.wk) <- c("interval", "weekend", "meansteps")
+wkend <-subset(a, a$weekend=="weekend")
+i.wkend <-aggregate(wkend$steps, by=list(wkend$interval, wkend$weekend), FUN=mean, na.rm=TRUE)
+colnames(i.wkend) <- c("interval", "weekend", "meansteps")
+
+p <- rbind(i.wk, i.wkend)
+p$weekend <- as.factor(p$weekend)
+xyplot(p$meansteps ~ p$interval | p$weekend,
+       data = p,
+       type = "l",
+       xlab = "interval",
+       ylab = "mean number of steps",
+       main = "Average number of steps in an interval",
+       layout=c(1,2))
+```
